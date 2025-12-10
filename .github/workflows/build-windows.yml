@@ -50,13 +50,7 @@ jobs:
         .\vcpkg.exe version
         cd ..
 
-    - name: Install SDL2 dependencies
-      shell: pwsh
-      run: |
-        cd vcpkg
-        Write-Host "Installing SDL2 libraries..."
-        .\vcpkg.exe install sdl2:x64-windows sdl2-image:x64-windows sdl2-ttf:x64-windows --recurse
-        cd ..
+        Write-Host "Note: SDL2 dependencies will be installed automatically via vcpkg.json manifest during CMake configure"
 
     - name: Configure CMake
       shell: pwsh
