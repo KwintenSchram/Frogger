@@ -10,8 +10,6 @@
 #include "Game.h"
 #include <abstract/Factory.h>
 #include <concrete/FactorySDL.h>
-#include <unistd.h>
-#include <windows.h>
 using namespace frogger;
 
 int main(int argc, char *argv[])
