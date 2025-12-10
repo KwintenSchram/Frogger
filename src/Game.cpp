@@ -43,17 +43,24 @@ Game::Game(Factory* F)
 	int amountOfPlayers = 1;
 	char gameMode = 'E';
 	char difficulty = 'E';
-	int WindowHeight = 530;
-	int WindowWidth = 700;
-	int rowHeight = 45;
-	int dataWindowHeightDesired = 30;
-	int dataWindowHeight =
+
+	// Window configuration using constants
+	const int WindowWidth = GameConstants::WINDOW_WIDTH;
+	const int WindowHeight = GameConstants::WINDOW_HEIGHT;
+	const int rowHeight = GameConstants::ROW_HEIGHT;
+	const int dataWindowHeightDesired = GameConstants::DATA_WINDOW_HEIGHT_DESIRED;
+	const int dataWindowHeight =
 			((WindowHeight - dataWindowHeightDesired) % rowHeight)
 					+ dataWindowHeightDesired;
-	int gameWindowHeight = WindowHeight - dataWindowHeight;
-	int gameWindowWidth = WindowWidth;
-	int plStartW = rowHeight, plStartH = rowHeight, plStartSpeed = rowHeight;
-	int plStartX = (gameWindowWidth / 2), plStartY = (gameWindowHeight- plStartW);
+	const int gameWindowHeight = WindowHeight - dataWindowHeight;
+	const int gameWindowWidth = WindowWidth;
+
+	// Player start configuration using constants
+	const int plStartW = GameConstants::PLAYER_START_WIDTH;
+	const int plStartH = GameConstants::PLAYER_START_HEIGHT;
+	const int plStartSpeed = GameConstants::PLAYER_START_SPEED;
+	const int plStartX = (gameWindowWidth / 2);
+	const int plStartY = (gameWindowHeight - plStartW);
 	std::string keyStroke;
 
 	std::list<Player*> playersR;
@@ -121,10 +128,11 @@ Game::Game(Factory* F)
 
 					state = playersAlive(players) ? state : 'G';
 					state = level->isObjectiveDone() ? 'V' : state;
-					if (gameMode == 'E'	&& ((players->back()->getScore()-prevScore) >= 100)	&& (players->back()->getScore() > prevScore))
+					const int scoreForLevelUp = GameConstants::Endless::SCORE_FOR_LEVEL_UP;
+					if (gameMode == 'E'	&& ((players->back()->getScore()-prevScore) >= scoreForLevelUp)	&& (players->back()->getScore() > prevScore))
 					{
 						lvlprop->levelUp();
-						prevScore = players->back()->getScore()-(players->back()->getScore()%100);
+						prevScore = players->back()->getScore()-(players->back()->getScore()%scoreForLevelUp);
 					}
 					win->dislayData(players);
 					win->updateScreen();
@@ -194,24 +202,34 @@ void frogger::Game::addPlayers(Factory* F, std::list<Player*>* players, int amou
 	for(Player* player:*players)
 							delete(player);
 	players->clear();
-	int life = 4, totalTime = 50, scorePerStep = 5, projectiles = 4; //classic easy mode
+
+	// Initialize with easy mode defaults
+	int life = GameConstants::Easy::LIVES;
+	int totalTime = GameConstants::Easy::TOTAL_TIME;
+	int scorePerStep = GameConstants::Easy::SCORE_PER_STEP;
+	int projectiles = GameConstants::Easy::PROJECTILES;
 	bool counterEnabled;
 
 	counterEnabled = (gameMode == 'E') ? false : true;
 
-	life = (difficulty == 'M') ? 3 : life;
-	life = (difficulty == 'H') ? 2 : life;
-	life = (gameMode == 'E') ? 0 : life;
+	// Apply difficulty settings
+	if (difficulty == 'M') {
+		life = GameConstants::Medium::LIVES;
+		totalTime = GameConstants::Medium::TOTAL_TIME;
+		scorePerStep = GameConstants::Medium::SCORE_PER_STEP;
+		projectiles = GameConstants::Medium::PROJECTILES;
+	} else if (difficulty == 'H') {
+		life = GameConstants::Hard::LIVES;
+		totalTime = GameConstants::Hard::TOTAL_TIME;
+		scorePerStep = GameConstants::Hard::SCORE_PER_STEP;
+		projectiles = GameConstants::Hard::PROJECTILES;
+	}
 
-	totalTime = (difficulty == 'M') ? 40 : totalTime;
-	totalTime = (difficulty == 'H') ? 30 : totalTime;
-	totalTime = (gameMode == 'E') ? -1 : totalTime;
-
-	scorePerStep = (difficulty == 'M') ? 10 : scorePerStep;
-	scorePerStep = (difficulty == 'H') ? 15 : scorePerStep;
-
-	projectiles = (difficulty == 'M') ? 3 : projectiles;
-	projectiles = (difficulty == 'H') ? 2 : projectiles;
+	// Apply endless mode overrides
+	if (gameMode == 'E') {
+		life = GameConstants::Endless::LIVES;
+		totalTime = GameConstants::Endless::TOTAL_TIME;
+	}
 
 	players->clear();
 	if (amount >= 1)

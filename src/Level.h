@@ -10,28 +10,22 @@
 #include <abstract/entities/Obstacle.h>
 #include <abstract/entities/Player.h>
 #include <abstract/entities/Projectile.h>
-#include <abstract/entities/Projectile.h>
 #include <abstract/entities/Props.h>
 #include <abstract/Events.h>
 #include <abstract/Factory.h>
 #include <abstract/Row.h>
-#include <abstract/Row.h>
 #include <abstract/Window.h>
-#include <vector>
-#include <list>
 #include "levelGenerator/LevelProperties.h"
-#include "Abstract/Factory.h"
-#include <string>
-#include <vector>
-#include <list>
-#include <iterator>
 #include <algorithm>
-#include <stdlib.h>
-#include <time.h>
-#include <ctime>
-#include <ratio>
 #include <chrono>
+#include <ctime>
+#include <iterator>
+#include <list>
+#include <ratio>
+#include <stdlib.h>
 #include <string>
+#include <time.h>
+#include <vector>
 
 namespace frogger
 {

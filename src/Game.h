@@ -22,7 +22,9 @@
 #include <ratio>
 #include "Level.h"
 #include "levelGenerator/LevelProperties.h"
-#include "menu/Menu.H"
+#include "menu/Menu.h"
+#include "GameEnums.h"
+#include "GameConstants.h"
 namespace frogger
 {
 	class Game
@@ -36,8 +38,9 @@ namespace frogger
 					LevelProperties* lvlProp,Window* win);
 			void addHighScore(std::list<Player*>* players, char gameMode);
 		protected:
-			std::vector<int> highScoreClassic = { 0, 0, 0, 0 };
-			std::vector<int> highScoreEndless = { 0, 0, 0, 0 };
+			// Initialize highscore vectors with zeros based on HIGHSCORE_ENTRIES constant
+			std::vector<int> highScoreClassic = std::vector<int>(GameConstants::HIGHSCORE_ENTRIES, 0);
+			std::vector<int> highScoreEndless = std::vector<int>(GameConstants::HIGHSCORE_ENTRIES, 0);
 	};
 }
 

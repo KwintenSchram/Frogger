@@ -1,0 +1,103 @@
+name: Build Windows Release
+
+on:
+  push:
+    branches: [ main, master, develop, claude/** ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    - name: Setup vcpkg
+      uses: lukka/run-vcpkg@v11
+      with:
+        vcpkgGitCommitId: 'c8696863d371ab7f46545af94c45d05e72f4a15b'
+
+    - name: Install dependencies with vcpkg
+      run: |
+        vcpkg install sdl2:x64-windows sdl2-image:x64-windows sdl2-ttf:x64-windows
+
+    - name: Configure CMake
+      run: |
+        cmake -B build -S . -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE=$env:VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake
+
+    - name: Build
+      run: cmake --build build --config Release
+
+    - name: Package artifacts
+      run: |
+        New-Item -ItemType Directory -Force -Path release-package
+        Copy-Item build/Release/Frogger.exe release-package/
+        Copy-Item demo.jpg release-package/ -ErrorAction SilentlyContinue
+        Copy-Item m0.png release-package/ -ErrorAction SilentlyContinue
+        Copy-Item README.md release-package/
+
+        # Find and copy SDL2 DLLs
+        $sdl2Dll = Get-ChildItem -Path "build" -Recurse -Filter "SDL2.dll" -ErrorAction SilentlyContinue | Select-Object -First 1
+        if ($sdl2Dll) {
+          Copy-Item $sdl2Dll.FullName release-package/
+        }
+
+        $sdl2ImageDll = Get-ChildItem -Path "build" -Recurse -Filter "SDL2_image.dll" -ErrorAction SilentlyContinue | Select-Object -First 1
+        if ($sdl2ImageDll) {
+          Copy-Item $sdl2ImageDll.FullName release-package/
+        }
+
+        $sdl2TtfDll = Get-ChildItem -Path "build" -Recurse -Filter "SDL2_ttf.dll" -ErrorAction SilentlyContinue | Select-Object -First 1
+        if ($sdl2TtfDll) {
+          Copy-Item $sdl2TtfDll.FullName release-package/
+        }
+
+        # Copy DLLs from vcpkg installed directory
+        if (Test-Path "$env:VCPKG_ROOT/installed/x64-windows/bin/SDL2.dll") {
+          Copy-Item "$env:VCPKG_ROOT/installed/x64-windows/bin/SDL2.dll" release-package/ -Force
+        }
+        if (Test-Path "$env:VCPKG_ROOT/installed/x64-windows/bin/SDL2_image.dll") {
+          Copy-Item "$env:VCPKG_ROOT/installed/x64-windows/bin/SDL2_image.dll" release-package/ -Force
+        }
+        if (Test-Path "$env:VCPKG_ROOT/installed/x64-windows/bin/SDL2_ttf.dll") {
+          Copy-Item "$env:VCPKG_ROOT/installed/x64-windows/bin/SDL2_ttf.dll" release-package/ -Force
+        }
+
+        # Copy any additional required DLLs (like zlib, libpng, etc.)
+        Get-ChildItem "$env:VCPKG_ROOT/installed/x64-windows/bin/*.dll" -ErrorAction SilentlyContinue | ForEach-Object {
+          Copy-Item $_.FullName release-package/ -ErrorAction SilentlyContinue
+        }
+
+    - name: Upload Windows Build Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: Frogger-Windows-x64
+        path: release-package/
+        if-no-files-found: error
+
+    - name: Create Release ZIP
+      run: |
+        Compress-Archive -Path release-package/* -DestinationPath Frogger-Windows-x64.zip
+
+    - name: Upload Release ZIP
+      uses: actions/upload-artifact@v4
+      with:
+        name: Frogger-Windows-x64-ZIP
+        path: Frogger-Windows-x64.zip
+        if-no-files-found: error
+
+  build-info:
+    runs-on: ubuntu-latest
+    needs: build-windows
+
+    steps:
+    - name: Print Build Success
+      run: |
+        echo "✅ Windows build completed successfully!"
+        echo "📦 Artifacts have been uploaded and are available for download."
+        echo "🎮 Download the Frogger-Windows-x64.zip to play the game!"
