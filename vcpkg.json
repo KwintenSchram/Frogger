@@ -5,6 +5,5 @@
     "sdl2",
     "sdl2-image",
     "sdl2-ttf"
-  ],
-  "builtin-baseline": "c8696863d371ab7f46545af94c45d05e72f4a15b"
+  ]
 }
