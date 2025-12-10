@@ -21,87 +21,136 @@ jobs:
         path: |
           ${{ github.workspace }}/vcpkg
           ${{ github.workspace }}/build/vcpkg_installed
-        key: ${{ runner.os }}-vcpkg-${{ hashFiles('**/vcpkg.json') }}
+        key: ${{ runner.os }}-vcpkg-${{ hashFiles('**/vcpkg.json') }}-v2
         restore-keys: |
           ${{ runner.os }}-vcpkg-
 
     - name: Setup vcpkg
+      shell: pwsh
       run: |
-        git clone https://github.com/microsoft/vcpkg.git
+        if (-Not (Test-Path "vcpkg")) {
+          Write-Host "Cloning vcpkg..."
+          git clone https://github.com/microsoft/vcpkg.git
+        } else {
+          Write-Host "vcpkg directory exists (from cache)"
+          cd vcpkg
+          git pull
+          cd ..
+        }
+
         cd vcpkg
-        .\bootstrap-vcpkg.bat
+        if (-Not (Test-Path "vcpkg.exe")) {
+          Write-Host "Bootstrapping vcpkg..."
+          .\bootstrap-vcpkg.bat
+        } else {
+          Write-Host "vcpkg already bootstrapped"
+        }
+
+        # Show vcpkg version
+        .\vcpkg.exe version
         cd ..
 
-    - name: Configure CMake with vcpkg
+    - name: Install SDL2 dependencies
+      shell: pwsh
       run: |
-        cmake -B build -S . `
-          -DCMAKE_BUILD_TYPE=Release `
-          -DCMAKE_TOOLCHAIN_FILE="${{ github.workspace }}/vcpkg/scripts/buildsystems/vcpkg.cmake"
+        cd vcpkg
+        Write-Host "Installing SDL2 libraries..."
+        .\vcpkg.exe install sdl2:x64-windows sdl2-image:x64-windows sdl2-ttf:x64-windows --recurse
+        cd ..
+
+    - name: Configure CMake
+      shell: pwsh
+      run: |
+        $toolchainFile = "${{ github.workspace }}/vcpkg/scripts/buildsystems/vcpkg.cmake"
+        Write-Host "Toolchain file: $toolchainFile"
+        cmake -B build -S . -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE="$toolchainFile"
 
     - name: Build
-      run: cmake --build build --config Release
+      run: cmake --build build --config Release --verbose
 
     - name: List build output
+      shell: pwsh
       run: |
-        Write-Host "Build directory contents:"
+        Write-Host "=== Executables ==="
         Get-ChildItem -Path build -Recurse -Filter "*.exe" | ForEach-Object { Write-Host $_.FullName }
+        Write-Host "`n=== DLLs ==="
         Get-ChildItem -Path build -Recurse -Filter "*.dll" | ForEach-Object { Write-Host $_.FullName }
 
     - name: Package artifacts
+      shell: pwsh
       run: |
         New-Item -ItemType Directory -Force -Path release-package
-        Copy-Item build/Release/Frogger.exe release-package/ -ErrorAction Stop
-        Copy-Item demo.jpg release-package/ -ErrorAction SilentlyContinue
-        Copy-Item m0.png release-package/ -ErrorAction SilentlyContinue
-        Copy-Item README.md release-package/
 
-        # Copy all required DLLs from vcpkg_installed directory
-        $vcpkgBinPath = "build/vcpkg_installed/x64-windows/bin"
-        if (Test-Path $vcpkgBinPath) {
-          Write-Host "Copying DLLs from vcpkg_installed..."
-          Get-ChildItem "$vcpkgBinPath/*.dll" | ForEach-Object {
-            Write-Host "Copying $($_.Name)"
-            Copy-Item $_.FullName release-package/
-          }
-        }
-
-        # Fallback: Check vcpkg directory
-        $vcpkgInstalled = "vcpkg/installed/x64-windows/bin"
-        if (Test-Path $vcpkgInstalled) {
-          Write-Host "Copying DLLs from vcpkg/installed..."
-          Get-ChildItem "$vcpkgInstalled/*.dll" | ForEach-Object {
-            Write-Host "Copying $($_.Name)"
-            Copy-Item $_.FullName release-package/ -Force
-          }
-        }
-
-        # List what we packaged
-        Write-Host "`nPackaged files:"
-        Get-ChildItem release-package | ForEach-Object { Write-Host "  - $($_.Name)" }
-
-    - name: Verify executable
-      run: |
-        if (Test-Path "release-package/Frogger.exe") {
-          Write-Host "✅ Frogger.exe found"
-          $dllCount = (Get-ChildItem release-package/*.dll).Count
-          Write-Host "✅ Found $dllCount DLL files"
+        # Copy executable
+        if (Test-Path "build/Release/Frogger.exe") {
+          Copy-Item build/Release/Frogger.exe release-package/
+          Write-Host "✅ Copied Frogger.exe"
         } else {
           Write-Error "❌ Frogger.exe not found!"
           exit 1
         }
 
-    - name: Upload Windows Build Artifact
+        # Copy game assets
+        Copy-Item demo.jpg release-package/ -ErrorAction SilentlyContinue
+        Copy-Item m0.png release-package/ -ErrorAction SilentlyContinue
+        Copy-Item README.md release-package/
+
+        # Copy DLLs from vcpkg installed location
+        $vcpkgBin = "vcpkg/installed/x64-windows/bin"
+        if (Test-Path $vcpkgBin) {
+          Write-Host "Copying DLLs from $vcpkgBin"
+          Get-ChildItem "$vcpkgBin/*.dll" | ForEach-Object {
+            Copy-Item $_.FullName release-package/
+            Write-Host "  ✅ $($_.Name)"
+          }
+        }
+
+        # Also check build/vcpkg_installed (manifest mode location)
+        $manifestBin = "build/vcpkg_installed/x64-windows/bin"
+        if (Test-Path $manifestBin) {
+          Write-Host "Copying DLLs from $manifestBin"
+          Get-ChildItem "$manifestBin/*.dll" | ForEach-Object {
+            Copy-Item $_.FullName release-package/ -Force
+            Write-Host "  ✅ $($_.Name)"
+          }
+        }
+
+        # List final package contents
+        Write-Host "`n=== Package Contents ==="
+        Get-ChildItem release-package | ForEach-Object { Write-Host "  - $($_.Name)" }
+
+    - name: Verify package
+      shell: pwsh
+      run: |
+        if (-Not (Test-Path "release-package/Frogger.exe")) {
+          Write-Error "❌ Frogger.exe missing from package!"
+          exit 1
+        }
+
+        $dllCount = (Get-ChildItem release-package/*.dll -ErrorAction SilentlyContinue).Count
+        if ($dllCount -eq 0) {
+          Write-Warning "⚠️ No DLL files found in package - game may not run!"
+        } else {
+          Write-Host "✅ Found $dllCount DLL files"
+        }
+
+        Write-Host "✅ Package verification passed"
+
+    - name: Upload Windows Build
       uses: actions/upload-artifact@v4
       with:
         name: Frogger-Windows-x64
         path: release-package/
         if-no-files-found: error
 
-    - name: Create Release ZIP
+    - name: Create ZIP archive
+      shell: pwsh
       run: |
         Compress-Archive -Path release-package/* -DestinationPath Frogger-Windows-x64.zip
+        $zipSize = (Get-Item Frogger-Windows-x64.zip).Length / 1MB
+        Write-Host "✅ Created ZIP archive ($([math]::Round($zipSize, 2)) MB)"
 
-    - name: Upload Release ZIP
+    - name: Upload ZIP
       uses: actions/upload-artifact@v4
       with:
         name: Frogger-Windows-x64-ZIP
@@ -113,8 +162,8 @@ jobs:
     needs: build-windows
 
     steps:
-    - name: Print Build Success
+    - name: Build Success
       run: |
         echo "✅ Windows build completed successfully!"
-        echo "📦 Artifacts have been uploaded and are available for download."
-        echo "🎮 Download the Frogger-Windows-x64.zip to play the game!"
+        echo "📦 Artifacts are ready for download"
+        echo "🎮 Download Frogger-Windows-x64.zip to play!"
