@@ -17,10 +17,7 @@
 #include <abstract/Row.h>
 #include <abstract/Row.h>
 #include <abstract/Window.h>
-#include <vector>
-#include <list>
 #include "levelGenerator/LevelProperties.h"
-#include "Abstract/Factory.h"
 #include <string>
 #include <vector>
 #include <list>

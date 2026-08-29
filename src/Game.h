@@ -22,7 +22,7 @@
 #include <ratio>
 #include "Level.h"
 #include "levelGenerator/LevelProperties.h"
-#include "menu/Menu.H"
+#include "menu/Menu.h"
 namespace frogger
 {
 	class Game

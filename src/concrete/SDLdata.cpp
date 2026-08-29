@@ -74,7 +74,7 @@ void SDLdata::createTextures()
 {
 	std::string recourcePath=SDL_GetBasePath();
 
-	line = IMG_LoadTexture(re, (recourcePath+"\\frogger\\menu\\line.png").c_str());
+	line = IMG_LoadTexture(re, (recourcePath+"frogger/menu/line.png").c_str());
 
 	fillTextureVectors(&backTex,"back",2);
 

@@ -51,10 +51,7 @@ Menu::~Menu()
 	delete(SE);
 	delete(SM);
 	delete(SH);
-
-	delete(selectedMode);
-	delete(selectedNumberOfPlayers);
-	delete(selectedDifficulty);
+	delete(back);
 }
 
 char Menu::menuExecution(std::string keyDown, char state, int mXH, int mYH)
